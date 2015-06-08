@@ -1,3 +1,5 @@
+import django
+from django.db.backends.base.introspection import TableInfo
 from django.db.backends.postgresql_psycopg2.introspection import DatabaseIntrospection
 
 
@@ -11,4 +13,11 @@ class DatabaseSchemaIntrospection(DatabaseIntrospection):
             WHERE c.relkind IN ('r', 'v', '')
                 AND n.nspname = '%s'
                 AND pg_catalog.pg_table_is_visible(c.oid)""" % self.connection.schema_name)
-        return [row[0] for row in cursor.fetchall() if row[0] not in self.ignored_tables]
+        if django.VERSION < (1, 6, 0):
+            return [row[0] for row in cursor.fetchall()]
+        elif django.VERSION < (1, 8, 0):
+            return [row[0] for row in cursor.fetchall() if row[0] not in self.ignored_tables]
+        else:
+            return [TableInfo(row[0], {'r': 't', 'v': 'v'}.get(row[1]))
+                for row in cursor.fetchall()
+                if row[0] not in self.ignored_tables]
